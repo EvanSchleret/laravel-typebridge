@@ -13,7 +13,7 @@
   <a href="https://packagist.org/packages/evanschleret/laravel-typebridge"><img src="https://img.shields.io/packagist/dt/evanschleret/laravel-typebridge" alt="Packagist Downloads" /></a>
   <a href="https://packagist.org/packages/evanschleret/laravel-typebridge"><img src="https://img.shields.io/packagist/l/evanschleret/laravel-typebridge" alt="License" /></a>
   <img src="https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4" alt="PHP >= 8.2" />
-  <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20" alt="Laravel 12.x" />
+  <img src="https://img.shields.io/badge/Laravel-12.x%20%7C%2013.x-FF2D20" alt="Laravel 12.x | 13.x" />
 </p>
 
 ## Why this package
@@ -23,7 +23,8 @@ This package helps you keep backend resources and frontend types aligned, with d
 ## Requirements
 
 - PHP `>=8.2`
-- Laravel `12.x`
+- Laravel `12.x` or `13.x`
+- Note: Laravel `13.x` requires PHP `>= 8.3` (Laravel framework requirement)
 
 ## Installation
 

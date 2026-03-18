@@ -7,7 +7,7 @@ namespace EvanSchleret\LaravelTypeBridge\Generation;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use ReflectionClass;
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 use EvanSchleret\LaravelTypeBridge\Exceptions\InvalidResourceTargetException;
 
 final class ResourceDiscovery
@@ -24,11 +24,11 @@ final class ResourceDiscovery
         foreach ($this->collectPhpFiles($sources) as $filePath) {
             foreach ($this->loadClassesFromFile($filePath) as $className) {
                 $reflection = new ReflectionClass($className);
-                $attributes = $reflection->getAttributes(TypeScriptResource::class);
+                $attributes = $reflection->getAttributes(TypeBridgeResource::class);
 
                 foreach ($attributes as $attribute) {
                     if (!$reflection->isSubclassOf(JsonResource::class) && !$reflection->isSubclassOf(ResourceCollection::class)) {
-                        throw new InvalidResourceTargetException("{$reflection->getName()} is annotated with #[TypeScriptResource] but is not a Laravel resource");
+                        throw new InvalidResourceTargetException("{$reflection->getName()} is annotated with #[TypeBridgeResource] but is not a Laravel resource");
                     }
 
                     $instance = $attribute->newInstance();

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Fixtures\Resources\Naming;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 
-#[TypeScriptResource(
+#[TypeBridgeResource(
     name: 'AuditLog',
     fileName: 'CustomAudit.ts',
     structure: [

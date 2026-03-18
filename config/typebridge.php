@@ -9,7 +9,7 @@ return [
         'base_path' => resource_path('typescript'),
     ],
 
-    // Directories scanned recursively for PHP classes that use #[TypeScriptResource].
+    // Directories scanned recursively for PHP classes that use #[TypeBridgeResource].
     'sources' => [
         app_path('Http/Resources'),
     ],

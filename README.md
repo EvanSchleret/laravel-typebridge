@@ -47,24 +47,24 @@ Generated file:
 Generate files:
 
 ```bash
-php artisan resource-typescript:generate
+php artisan typebridge:generate
 ```
 
 Use another output directory:
 
 ```bash
-php artisan resource-typescript:generate --output-path=resources/typescript
+php artisan typebridge:generate --output-path=resources/typescript
 ```
 
 Preview only (no write):
 
 ```bash
-php artisan resource-typescript:generate --dry-run
+php artisan typebridge:generate --dry-run
 ```
 
 ## Attribute example
 
-Use `TypeScriptResource` on Laravel resources (`JsonResource` or `ResourceCollection`):
+Use `TypeBridgeResource` on Laravel resources (`JsonResource` or `ResourceCollection`):
 
 ```php
 <?php
@@ -74,32 +74,30 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\User;
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-#[TypeScriptResource(
+#[TypeBridgeResource(
     name: 'UserItem',
     structure: [
         'id' => 'number',
         'email' => 'string|null',
         'roles' => '@relation(roles)',
         'manager?' => '@relation(manager)',
-        'status' => "'active' | 'inactive'",
     ],
-    types: [
-        'UserStatus' => "'active' | 'inactive'",
-    ],
-    append: [
-        'export const userItemMarker = true',
-    ],
-    aliasBase: 'User',
-    aliasPlural: 'Users',
 )]
 final class UserResource extends JsonResource
 {
     public static string $model = User::class;
 }
 ```
+
+Optional attribute fields:
+
+- `types`: local TypeScript aliases/enums declared in the same generated file
+- `fileName`: per-resource output filename override
+- `append`: per-resource lines appended at the end of the generated file
+- `aliasBase` and `aliasPlural`: alias placeholders used by `generation.append_templates`
 
 `@relation(name)` is strict:
 

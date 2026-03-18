@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 
 it('keeps attribute defaults', function (): void {
-    $attribute = new TypeScriptResource(name: 'User');
+    $attribute = new TypeBridgeResource(name: 'User');
 
     expect($attribute->name)->toBe('User')
         ->and($attribute->structure)->toBe([])
@@ -17,7 +17,7 @@ it('keeps attribute defaults', function (): void {
 });
 
 it('accepts custom attribute values', function (): void {
-    $attribute = new TypeScriptResource(
+    $attribute = new TypeBridgeResource(
         name: 'User',
         structure: ['id' => 'number'],
         types: ['Status' => "'active' | 'inactive'"],

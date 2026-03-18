@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\Resources\Templates;
 
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-#[TypeScriptResource(
+#[TypeBridgeResource(
     name: 'PersonItem',
     structure: [
         'id' => 'number',

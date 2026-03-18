@@ -7,11 +7,11 @@ namespace EvanSchleret\LaravelTypeBridge\Commands;
 use Illuminate\Console\Command;
 use EvanSchleret\LaravelTypeBridge\Generation\TypeScriptGenerator;
 
-final class GenerateTypeScriptResourceCommand extends Command
+final class GenerateTypeBridgeCommand extends Command
 {
-    protected $signature = 'resource-typescript:generate {--output-path=} {--dry-run}';
+    protected $signature = 'typebridge:generate {--output-path=} {--dry-run}';
 
-    protected $description = 'Generate TypeScript files from #[TypeScriptResource] attributes';
+    protected $description = 'Generate TypeScript files from #[TypeBridgeResource] attributes';
 
     public function __construct(
         private readonly TypeScriptGenerator $generator,

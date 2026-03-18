@@ -7,7 +7,7 @@ namespace EvanSchleret\LaravelTypeBridge\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_CLASS)]
-final class TypeScriptResource
+final class TypeBridgeResource
 {
     public function __construct(
         public readonly string $name,

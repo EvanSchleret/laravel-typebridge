@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 it('uses output base path when output-path option is not provided', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     expect(is_file($this->defaultOutputPath() . '/User.ts'))->toBeTrue()
         ->and(is_file($this->defaultOutputPath() . '/index.ts'))->toBeTrue();
@@ -18,7 +18,7 @@ it('uses output base path when output-path option is not provided', function ():
 it('supports output-path override', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
 
-    Artisan::call('resource-typescript:generate', [
+    Artisan::call('typebridge:generate', [
         '--output-path' => $this->alternateOutputPath(),
     ]);
 
@@ -29,7 +29,7 @@ it('supports output-path override', function (): void {
 it('supports dry-run without writing files and prints generated content', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
 
-    Artisan::call('resource-typescript:generate', [
+    Artisan::call('typebridge:generate', [
         '--dry-run' => true,
     ]);
 
@@ -44,7 +44,7 @@ it('generates semicolons when enabled', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
     config()->set('typebridge.generation.use_semicolons', true);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $userContent = file_get_contents($this->defaultOutputPath() . '/User.ts');
     $indexContent = file_get_contents($this->defaultOutputPath() . '/index.ts');
@@ -57,7 +57,7 @@ it('generates semicolons when enabled', function (): void {
 it('generates deterministic imports and avoids type duplication', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $membershipContent = file_get_contents($this->defaultOutputPath() . '/Membership.ts');
     $userContent = file_get_contents($this->defaultOutputPath() . '/User.ts');
@@ -92,7 +92,7 @@ it('applies append order as generated content then attribute append then templat
         ],
     ]);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $content = file_get_contents($this->defaultOutputPath() . '/RoleItem.ts');
 
@@ -129,7 +129,7 @@ it('generates shared file and imports shared types in template aliases', functio
         ],
     ]);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $sharedContent = file_get_contents($this->defaultOutputPath() . '/_api.ts');
     $roleItemContent = file_get_contents($this->defaultOutputPath() . '/RoleItem.ts');
@@ -150,7 +150,7 @@ it('generates index file when enabled', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
     config()->set('typebridge.generation.generate_index', true);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $indexContent = file_get_contents($this->defaultOutputPath() . '/index.ts');
 
@@ -164,13 +164,13 @@ it('respects filename override and naming pattern', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Naming')]);
     config()->set('typebridge.files.naming_pattern', '{kebab}.dto');
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     expect(is_file($this->defaultOutputPath() . '/CustomAudit.ts'))->toBeTrue();
 
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
 
-    Artisan::call('resource-typescript:generate', [
+    Artisan::call('typebridge:generate', [
         '--output-path' => $this->alternateOutputPath(),
     ]);
 
@@ -180,7 +180,7 @@ it('respects filename override and naming pattern', function (): void {
 it('falls back to any when relation exists but no related generated type is available', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/RelationFallbackAny')]);
 
-    Artisan::call('resource-typescript:generate');
+    Artisan::call('typebridge:generate');
 
     $content = file_get_contents($this->defaultOutputPath() . '/UserLite.ts');
 
@@ -190,27 +190,27 @@ it('falls back to any when relation exists but no related generated type is avai
 it('fails when @relation is used without resolvable model', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/RelationNoModel')]);
 
-    expect(fn () => Artisan::call('resource-typescript:generate'))
+    expect(fn () => Artisan::call('typebridge:generate'))
         ->toThrow(RelationResolutionException::class, 'model class is not resolvable');
 });
 
 it('fails when @relation method does not exist', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/RelationMissingMethod')]);
 
-    expect(fn () => Artisan::call('resource-typescript:generate'))
+    expect(fn () => Artisan::call('typebridge:generate'))
         ->toThrow(RelationResolutionException::class, 'relation method not found');
 });
 
 it('fails when @relation method does not return eloquent relation', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/RelationInvalidReturn')]);
 
-    expect(fn () => Artisan::call('resource-typescript:generate'))
+    expect(fn () => Artisan::call('typebridge:generate'))
         ->toThrow(RelationResolutionException::class, 'not an Eloquent relation');
 });
 
 it('fails when attribute target is not a laravel resource', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Invalid')]);
 
-    expect(fn () => Artisan::call('resource-typescript:generate'))
+    expect(fn () => Artisan::call('typebridge:generate'))
         ->toThrow(InvalidResourceTargetException::class, 'is not a Laravel resource');
 });

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\Resources\Invalid;
 
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 
-#[TypeScriptResource(
+#[TypeBridgeResource(
     name: 'NotAResource',
     structure: [
         'id' => 'number',

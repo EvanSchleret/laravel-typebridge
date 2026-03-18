@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Tests\Fixtures\Resources\RelationFallbackAny;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use EvanSchleret\LaravelTypeBridge\Attributes\TypeScriptResource;
+use EvanSchleret\LaravelTypeBridge\Attributes\TypeBridgeResource;
 use Tests\Fixtures\Models\User;
 
-#[TypeScriptResource(
+#[TypeBridgeResource(
     name: 'UserLite',
     structure: [
         'roles' => '@relation(roles)',

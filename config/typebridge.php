@@ -7,6 +7,10 @@ return [
     // The CLI --output-path option always overrides this value.
     'output' => [
         'base_path' => resource_path('typescript'),
+
+        // Additional directories generated on each run without --output-path.
+        // Use --with-additional-paths to include them with --output-path as well.
+        'additional_paths' => [],
     ],
 
     // Directories scanned recursively for PHP classes that use #[TypeBridgeResource].
@@ -18,6 +22,9 @@ return [
     'generation' => [
         // Add semicolons at line endings in generated TypeScript.
         'use_semicolons' => false,
+
+        // Number of spaces used for one indentation level in generated interfaces.
+        'indent_size' => 2,
 
         // Generate index.ts barrel file exporting all generated resources.
         'generate_index' => true,

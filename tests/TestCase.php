@@ -39,8 +39,10 @@ abstract class TestCase extends Orchestra
     protected function defineEnvironment($app): void
     {
         $app['config']->set('typebridge.output.base_path', $this->defaultOutputPath());
+        $app['config']->set('typebridge.output.additional_paths', []);
         $app['config']->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
         $app['config']->set('typebridge.generation.use_semicolons', false);
+        $app['config']->set('typebridge.generation.indent_size', 2);
         $app['config']->set('typebridge.generation.generate_index', true);
         $app['config']->set('typebridge.generation.shared_file', '_api');
         $app['config']->set('typebridge.generation.shared_append', []);

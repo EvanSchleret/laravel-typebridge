@@ -40,6 +40,79 @@ it('supports dry-run without writing files and prints generated content', functi
         ->and($output)->toContain('export interface User');
 });
 
+it('supports only filter', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+
+    Artisan::call('typebridge:generate', [
+        '--only' => 'User,Role',
+    ]);
+
+    expect(is_file($this->defaultOutputPath() . '/User.ts'))->toBeTrue()
+        ->and(is_file($this->defaultOutputPath() . '/Role.ts'))->toBeTrue()
+        ->and(is_file($this->defaultOutputPath() . '/Membership.ts'))->toBeFalse();
+});
+
+it('supports except filter', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+
+    Artisan::call('typebridge:generate', [
+        '--except' => 'Membership',
+    ]);
+
+    expect(is_file($this->defaultOutputPath() . '/User.ts'))->toBeTrue()
+        ->and(is_file($this->defaultOutputPath() . '/Role.ts'))->toBeTrue()
+        ->and(is_file($this->defaultOutputPath() . '/Membership.ts'))->toBeFalse();
+});
+
+it('supports clean option and removes stale generated files', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+    $stalePath = $this->defaultOutputPath() . '/Stale.ts';
+
+    if (!is_dir($this->defaultOutputPath())) {
+        mkdir($this->defaultOutputPath(), 0755, true);
+    }
+    file_put_contents($stalePath, "export interface Stale {}\n");
+
+    Artisan::call('typebridge:generate', [
+        '--clean' => true,
+    ]);
+
+    expect(is_file($stalePath))->toBeFalse()
+        ->and(is_file($this->defaultOutputPath() . '/User.ts'))->toBeTrue();
+});
+
+it('generates additional configured output paths by default', function (): void {
+    $additionalOutputPath = $this->alternateOutputPath();
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+    config()->set('typebridge.output.additional_paths', [$additionalOutputPath]);
+
+    Artisan::call('typebridge:generate');
+
+    expect(is_file($this->defaultOutputPath() . '/User.ts'))->toBeTrue()
+        ->and(is_file($additionalOutputPath . '/User.ts'))->toBeTrue();
+});
+
+it('does not generate additional paths with output-path unless with-additional-paths is enabled', function (): void {
+    $additionalOutputPath = $this->defaultOutputPath();
+    $overrideOutputPath = $this->alternateOutputPath();
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+    config()->set('typebridge.output.additional_paths', [$additionalOutputPath]);
+
+    Artisan::call('typebridge:generate', [
+        '--output-path' => $overrideOutputPath,
+    ]);
+
+    expect(is_file($overrideOutputPath . '/User.ts'))->toBeTrue()
+        ->and(is_file($additionalOutputPath . '/User.ts'))->toBeFalse();
+
+    Artisan::call('typebridge:generate', [
+        '--output-path' => $overrideOutputPath,
+        '--with-additional-paths' => true,
+    ]);
+
+    expect(is_file($additionalOutputPath . '/User.ts'))->toBeTrue();
+});
+
 it('generates semicolons when enabled', function (): void {
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
     config()->set('typebridge.generation.use_semicolons', true);
@@ -52,6 +125,19 @@ it('generates semicolons when enabled', function (): void {
     expect($userContent)->toContain("import type { Role } from './Role';")
         ->and($userContent)->toContain('id: number;')
         ->and($indexContent)->toContain("export * from './User';");
+});
+
+it('uses configured indentation size', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Default')]);
+    config()->set('typebridge.generation.indent_size', 4);
+
+    Artisan::call('typebridge:generate');
+
+    $userContent = file_get_contents($this->defaultOutputPath() . '/User.ts');
+
+    expect($userContent)->toContain("    id: number\n")
+        ->and($userContent)->toContain("    roles: Role[]\n")
+        ->and($userContent)->not->toContain("\n  id: number\n");
 });
 
 it('generates deterministic imports and avoids type duplication', function (): void {
@@ -205,7 +291,24 @@ it('fails when @relation method does not return eloquent relation', function ():
     config()->set('typebridge.sources', [$this->fixturesPath('Resources/RelationInvalidReturn')]);
 
     expect(fn () => Artisan::call('typebridge:generate'))
-        ->toThrow(RelationResolutionException::class, 'not an Eloquent relation');
+        ->toThrow(RelationResolutionException::class, 'expected an Eloquent relation');
+});
+
+it('supports enum generation via @enum', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/Enum')]);
+
+    Artisan::call('typebridge:generate');
+
+    $content = file_get_contents($this->defaultOutputPath() . '/EnumPayload.ts');
+
+    expect($content)->toContain("status: 'draft'|'published'");
+});
+
+it('fails when @enum class is invalid', function (): void {
+    config()->set('typebridge.sources', [$this->fixturesPath('Resources/EnumInvalid')]);
+
+    expect(fn () => Artisan::call('typebridge:generate'))
+        ->toThrow(\EvanSchleret\LaravelTypeBridge\Exceptions\InvalidTypeDefinitionException::class, 'enum class does not exist');
 });
 
 it('fails when attribute target is not a laravel resource', function (): void {

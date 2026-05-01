@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace EvanSchleret\LaravelTypeBridge\Commands;
 
-use Illuminate\Console\Command;
 use EvanSchleret\LaravelTypeBridge\Generation\TypeScriptGenerator;
+use Illuminate\Console\Command;
 
-final class GenerateTypeBridgeCommand extends Command
+final class CheckTypeBridgeCommand extends Command
 {
-    protected $signature = 'typebridge:generate {--output-path=} {--dry-run} {--clean} {--only=} {--except=} {--with-additional-paths}';
+    protected $signature = 'typebridge:check {--output-path=} {--clean} {--only=} {--except=} {--with-additional-paths}';
 
-    protected $description = 'Generate TypeScript files from #[TypeBridgeResource] attributes';
+    protected $description = 'Check whether generated TypeScript files are up to date';
 
     public function __construct(
         private readonly TypeScriptGenerator $generator,
@@ -21,7 +21,6 @@ final class GenerateTypeBridgeCommand extends Command
 
     public function handle(): int
     {
-        $dryRun = (bool) $this->option('dry-run');
         $clean = (bool) $this->option('clean');
         $only = $this->parseListOption((string) $this->option('only'));
         $except = $this->parseListOption((string) $this->option('except'));
@@ -30,39 +29,56 @@ final class GenerateTypeBridgeCommand extends Command
             is_string($outputPathOverride) ? $outputPathOverride : null,
             (bool) $this->option('with-additional-paths'),
         );
-        $results = [];
+
+        $hasDifferences = false;
 
         foreach ($targetOutputPaths as $targetOutputPath) {
-            $results[] = $this->generator->generate(
+            $result = $this->generator->generate(
                 outputPathOverride: $targetOutputPath,
-                dryRun: $dryRun,
+                dryRun: true,
                 clean: $clean,
                 only: $only,
                 except: $except,
             );
-        }
 
-        if ($dryRun) {
-            $totalFiles = array_sum(array_map(static fn ($result): int => count($result->files), $results));
-            $this->line("Dry run mode: {$totalFiles} file(s) would be generated");
+            $outdatedFiles = [];
 
-            foreach ($results as $result) {
-                $this->line("Output path: {$result->outputPath}");
-                foreach ($result->files as $file) {
-                    $this->line('');
-                    $this->line("=== {$file->path} ===");
-                    $this->line($file->content);
+            foreach ($result->files as $file) {
+                if (!is_file($file->path)) {
+                    $outdatedFiles[] = $file->path;
+                    continue;
+                }
+
+                $currentContent = file_get_contents($file->path);
+                if (!is_string($currentContent) || $currentContent !== $file->content) {
+                    $outdatedFiles[] = $file->path;
                 }
             }
 
-            return self::SUCCESS;
+            if ($outdatedFiles !== [] || ($clean && $result->deletedFiles !== [])) {
+                $hasDifferences = true;
+                $this->error("Differences detected in {$result->outputPath}");
+
+                foreach ($outdatedFiles as $path) {
+                    $this->line("- outdated: {$path}");
+                }
+
+                if ($clean) {
+                    foreach ($result->deletedFiles as $path) {
+                        $this->line("- stale: {$path}");
+                    }
+                }
+
+                continue;
+            }
+
+            $this->info("OK: {$result->outputPath}");
         }
 
-        foreach ($results as $result) {
-            $this->info('Generated ' . count($result->files) . " file(s) in {$result->outputPath}");
-            if ($clean && $result->deletedFiles !== []) {
-                $this->line('Removed stale file(s): ' . count($result->deletedFiles));
-            }
+        if ($hasDifferences) {
+            $this->line('Run typebridge:generate to update files');
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;

@@ -8,6 +8,8 @@ use EvanSchleret\LaravelTypeBridge\Exceptions\InvalidTypeDefinitionException;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use BackedEnum;
+use UnitEnum;
 
 final class TypeScriptGenerator
 {
@@ -20,13 +22,24 @@ final class TypeScriptGenerator
     ) {
     }
 
-    public function generate(?string $outputPathOverride = null, bool $dryRun = false): GenerationResult
+    public function generate(
+        ?string $outputPathOverride = null,
+        bool $dryRun = false,
+        bool $clean = false,
+        array $only = [],
+        array $except = [],
+    ): GenerationResult
     {
         $outputPath = $this->resolveOutputPath($outputPathOverride);
-        $resources = $this->resourceDiscovery->discover($this->resolveSources());
+        $resources = $this->filterResources(
+            $this->resourceDiscovery->discover($this->resolveSources()),
+            $only,
+            $except,
+        );
         $extension = $this->resolveExtension();
         $namingPattern = (string) config('typebridge.files.naming_pattern', '{name}');
         $useSemicolons = (bool) config('typebridge.generation.use_semicolons', false);
+        $indentation = $this->resolveIndentation();
         $sharedAppend = $this->normalizeLineList(config('typebridge.generation.shared_append', []));
         $sharedFileName = $this->resolveSharedFileName($extension, $sharedAppend !== []);
         $sharedExportNames = $this->extractExportNames($sharedAppend);
@@ -82,6 +95,7 @@ final class TypeScriptGenerator
                 typeToFileMap: $typeToFileMap,
                 modelToTypeMap: $modelToTypeMap,
                 useSemicolons: $useSemicolons,
+                indentation: $indentation,
                 extension: $extension,
                 sharedFileName: $sharedFileName,
                 sharedExportNames: $sharedExportNames,
@@ -115,6 +129,10 @@ final class TypeScriptGenerator
 
         usort($generatedFiles, static fn (GeneratedFile $left, GeneratedFile $right): int => $left->path <=> $right->path);
 
+        $deletedFiles = $clean
+            ? $this->cleanOutputDirectory($outputPath, $generatedFiles, $extension, $dryRun)
+            : [];
+
         if (!$dryRun) {
             foreach ($generatedFiles as $generatedFile) {
                 $directory = dirname($generatedFile->path);
@@ -130,6 +148,7 @@ final class TypeScriptGenerator
             outputPath: $outputPath,
             dryRun: $dryRun,
             files: $generatedFiles,
+            deletedFiles: $deletedFiles,
         );
     }
 
@@ -139,6 +158,7 @@ final class TypeScriptGenerator
         array $typeToFileMap,
         array $modelToTypeMap,
         bool $useSemicolons,
+        string $indentation,
         string $extension,
         ?string $sharedFileName,
         array $sharedExportNames,
@@ -186,7 +206,8 @@ final class TypeScriptGenerator
             $optionalToken = $isOptional ? '?' : '';
             $fieldTerminator = $useSemicolons ? ';' : '';
             $fieldLines[] = sprintf(
-                '  %s%s: %s%s',
+                '%s%s%s: %s%s',
+                $indentation,
                 $this->normalizeFieldName($fieldName),
                 $optionalToken,
                 $parsedType->normalizedType,
@@ -403,11 +424,58 @@ final class TypeScriptGenerator
 
     private function resolveFieldType(DiscoveredResource $resource, string $typeExpression, array $modelToTypeMap): TypeParseResult
     {
-        if (preg_match('/^@relation\(([A-Za-z_][A-Za-z0-9_]*)\)$/', $typeExpression, $matches) === 1) {
+        if (str_starts_with($typeExpression, '@relation(')) {
+            if (preg_match('/^@relation\(([A-Za-z_][A-Za-z0-9_]*)\)$/', $typeExpression, $matches) !== 1) {
+                throw new InvalidTypeDefinitionException("Invalid @relation syntax '{$typeExpression}' in {$resource->className}. Expected @relation(methodName)");
+            }
+
             return $this->relationTypeResolver->resolve($resource, $matches[1], $modelToTypeMap);
         }
 
+        if (str_starts_with($typeExpression, '@enum(')) {
+            if (preg_match('/^@enum\(([^)]+)\)$/', $typeExpression, $matches) !== 1) {
+                throw new InvalidTypeDefinitionException("Invalid @enum syntax '{$typeExpression}' in {$resource->className}. Expected @enum(Fully\\\\Qualified\\\\EnumClass)");
+            }
+
+            return $this->resolveEnumType(trim($matches[1]), $resource);
+        }
+
         return $this->typeExpressionParser->parse($typeExpression);
+    }
+
+    private function resolveEnumType(string $enumClass, DiscoveredResource $resource): TypeParseResult
+    {
+        if ($enumClass === '' || !enum_exists($enumClass)) {
+            throw new InvalidTypeDefinitionException("Cannot resolve @enum({$enumClass}) in {$resource->className}: enum class does not exist");
+        }
+
+        $cases = $enumClass::cases();
+        if ($cases === []) {
+            throw new InvalidTypeDefinitionException("Cannot resolve @enum({$enumClass}) in {$resource->className}: enum has no cases");
+        }
+
+        $values = [];
+
+        foreach ($cases as $case) {
+            if ($case instanceof BackedEnum) {
+                $value = $case->value;
+                $values[] = is_string($value)
+                    ? "'" . str_replace("'", "\\'", $value) . "'"
+                    : (string) $value;
+                continue;
+            }
+
+            if ($case instanceof UnitEnum) {
+                $values[] = "'" . str_replace("'", "\\'", $case->name) . "'";
+                continue;
+            }
+        }
+
+        if ($values === []) {
+            throw new InvalidTypeDefinitionException("Cannot resolve @enum({$enumClass}) in {$resource->className}: unsupported enum values");
+        }
+
+        return new TypeParseResult(implode('|', $values), []);
     }
 
     private function resolveOutputPath(?string $overridePath): string
@@ -464,6 +532,20 @@ final class TypeScriptGenerator
         return $cleaned === '' ? 'ts' : $cleaned;
     }
 
+    private function resolveIndentation(): string
+    {
+        $size = config('typebridge.generation.indent_size', 2);
+        if (!is_int($size)) {
+            $size = is_numeric($size) ? (int) $size : 2;
+        }
+
+        if ($size < 0) {
+            $size = 0;
+        }
+
+        return str_repeat(' ', $size);
+    }
+
     private function resolveSharedFileName(string $extension, bool $hasSharedAppend): ?string
     {
         if (!$hasSharedAppend) {
@@ -482,6 +564,88 @@ final class TypeScriptGenerator
         }
 
         return "{$sharedFile}.{$extension}";
+    }
+
+    private function filterResources(array $resources, array $only, array $except): array
+    {
+        $onlyMap = $this->buildFilterMap($only);
+        $exceptMap = $this->buildFilterMap($except);
+
+        return array_values(array_filter(
+            $resources,
+            static function (DiscoveredResource $resource) use ($onlyMap, $exceptMap): bool {
+                $byOnly = $onlyMap === [] || array_key_exists($resource->name, $onlyMap) || array_key_exists($resource->className, $onlyMap);
+                $byExcept = !array_key_exists($resource->name, $exceptMap) && !array_key_exists($resource->className, $exceptMap);
+
+                return $byOnly && $byExcept;
+            },
+        ));
+    }
+
+    private function buildFilterMap(array $values): array
+    {
+        $map = [];
+
+        foreach ($values as $value) {
+            if (!is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            $map[trim($value)] = true;
+        }
+
+        return $map;
+    }
+
+    private function cleanOutputDirectory(string $outputPath, array $generatedFiles, string $extension, bool $dryRun): array
+    {
+        if (!$this->filesystem->isDirectory($outputPath)) {
+            return [];
+        }
+
+        $managedFilePaths = [];
+
+        foreach ($generatedFiles as $generatedFile) {
+            $managedFilePaths[realpath($generatedFile->path) ?: $generatedFile->path] = true;
+        }
+
+        $deletedFiles = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($outputPath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY,
+        );
+
+        foreach ($iterator as $item) {
+            if (!$item instanceof \SplFileInfo) {
+                continue;
+            }
+
+            if ($item->getExtension() !== $extension) {
+                continue;
+            }
+
+            $path = $item->getRealPath();
+            if (!is_string($path)) {
+                continue;
+            }
+
+            if (array_key_exists($path, $managedFilePaths)) {
+                continue;
+            }
+
+            if ($dryRun) {
+                $deletedFiles[] = $path;
+                continue;
+            }
+
+            if ($this->filesystem->delete($path)) {
+                $deletedFiles[] = $path;
+            }
+        }
+
+        sort($deletedFiles);
+
+        return $deletedFiles;
     }
 
     private function normalizeLineList(mixed $value): array

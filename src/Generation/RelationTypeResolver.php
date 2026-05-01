@@ -31,12 +31,27 @@ final class RelationTypeResolver
         }
 
         if (!method_exists($model, $relationName)) {
-            throw new RelationResolutionException("Cannot resolve @relation({$relationName}) for {$resource->className}: relation method not found");
+            $publicMethods = array_values(array_filter(
+                get_class_methods($model),
+                static fn (string $method): bool => !str_starts_with($method, '__'),
+            ));
+            sort($publicMethods);
+            $methodPreview = implode(', ', array_slice($publicMethods, 0, 8));
+            $suffix = $methodPreview === '' ? '' : ". Available methods include: {$methodPreview}";
+
+            throw new RelationResolutionException("Cannot resolve @relation({$relationName}) for {$resource->className}: relation method not found{$suffix}");
         }
 
-        $relation = $model->{$relationName}();
+        try {
+            $relation = $model->{$relationName}();
+        } catch (\Throwable $exception) {
+            $exceptionClass = $exception::class;
+            throw new RelationResolutionException("Cannot resolve @relation({$relationName}) for {$resource->className}: relation method threw {$exceptionClass} with message '{$exception->getMessage()}'", previous: $exception);
+        }
+
         if (!$relation instanceof Relation) {
-            throw new RelationResolutionException("Cannot resolve @relation({$relationName}) for {$resource->className}: method is not an Eloquent relation");
+            $actualType = get_debug_type($relation);
+            throw new RelationResolutionException("Cannot resolve @relation({$relationName}) for {$resource->className}: method returned {$actualType}, expected an Eloquent relation");
         }
 
         $relatedModel = $relation->getRelated()::class;

@@ -10,6 +10,7 @@ final class GenerationResult
         public readonly string $outputPath,
         public readonly bool $dryRun,
         public readonly array $files,
+        public readonly array $deletedFiles = [],
     ) {
     }
 }

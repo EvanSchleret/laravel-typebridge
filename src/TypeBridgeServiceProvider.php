@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EvanSchleret\LaravelTypeBridge;
 
 use Illuminate\Support\ServiceProvider;
+use EvanSchleret\LaravelTypeBridge\Commands\CheckTypeBridgeCommand;
 use EvanSchleret\LaravelTypeBridge\Commands\GenerateTypeBridgeCommand;
 
 final class TypeBridgeServiceProvider extends ServiceProvider
@@ -26,6 +27,7 @@ final class TypeBridgeServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 GenerateTypeBridgeCommand::class,
+                CheckTypeBridgeCommand::class,
             ]);
         }
     }

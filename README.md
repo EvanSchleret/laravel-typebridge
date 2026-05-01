@@ -62,6 +62,30 @@ Preview only (no write):
 php artisan typebridge:generate --dry-run
 ```
 
+Generate and remove stale `.ts` files:
+
+```bash
+php artisan typebridge:generate --clean
+```
+
+Generate only selected resources:
+
+```bash
+php artisan typebridge:generate --only=User,Role
+```
+
+Generate everything except selected resources:
+
+```bash
+php artisan typebridge:generate --except=Membership
+```
+
+Check generated files in CI:
+
+```bash
+php artisan typebridge:check
+```
+
 ## Attribute example
 
 Use `TypeBridgeResource` on Laravel resources (`JsonResource` or `ResourceCollection`):
@@ -107,6 +131,8 @@ Optional attribute fields:
 
 If the relation exists but no generated TypeScript type is available for the related model, the field falls back to `any` or `any[]`.
 
+`@enum(Fully\\Qualified\\EnumClass)` generates a TypeScript literal union from PHP enum cases.
+
 ## Configuration
 
 ### Published default config
@@ -121,12 +147,14 @@ declare(strict_types=1);
 return [
     'output' => [
         'base_path' => resource_path('typescript'),
+        'additional_paths' => [],
     ],
     'sources' => [
         app_path('Http/Resources'),
     ],
     'generation' => [
         'use_semicolons' => false,
+        'indent_size' => 2,
         'generate_index' => true,
         'shared_file' => '_api',
         'shared_append' => [],
@@ -145,6 +173,7 @@ This is an example, not the default:
 
 ```php
 'generation' => [
+    'indent_size' => 4,
     'shared_file' => '_api',
     'shared_append' => [
         'export interface ApiItemResponse<T> {',
@@ -166,6 +195,12 @@ This is an example, not the default:
     ],
 ],
 ```
+
+### Additional outputs
+
+`output.additional_paths` are generated on every `typebridge:generate` call when `--output-path` is not used.
+
+If you use `--output-path`, additional paths are skipped unless you pass `--with-additional-paths`.
 
 With `RoleItem`, this can generate:
 
@@ -209,12 +244,28 @@ Inside `append_templates.*.lines`:
 - `fileName` on the attribute overrides `files.naming_pattern` for one resource
 - `--output-path` overrides `output.base_path`
 
+## Roadmap
+
+- [x] Add `typebridge:check` for CI (no write, non-zero exit code when generated files are out of date)
+- [x] Add `--only` and `--except` to generate a subset of resources
+- [x] Add `--clean` to remove stale generated files
+- [x] Improve `@relation(...)` diagnostics with more actionable error messages
+- [x] Add enum helpers (for example `@enum(...)` support)
+- [ ] Add configurable scalar mapping presets (`datetime`, `uuid`, `decimal`, etc.)
+- [ ] Add configurable import/path strategy options
+- [ ] Add a first-class paginator wrapper preset
+- [ ] Add pre/post render hooks for advanced customization
+- [ ] Add incremental generation mode for large codebases
+- [ ] Add stubs/scaffolding helpers for `#[TypeBridgeResource]`
+- [ ] Add optional targets beyond interfaces (for example Zod schema generation)
+
 ## Other packages
 
 If you want to explore more of my Laravel packages:
 
 - [evanschleret/lara-mjml](https://github.com/EvanSchleret/lara-mjml)
 - [evanschleret/laravel-user-presence](https://github.com/EvanSchleret/laravel-user-presence)
+- [evanschleret/formforge](https://github.com/EvanSchleret/formfor)
 
 ## Open source
 
